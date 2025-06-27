@@ -1,14 +1,19 @@
 package com.example;
 
 import javax.swing.*;
+import javax.swing.text.*;
 import java.awt.*;
 import java.awt.event.*;
 
 public class Question2 extends JFrame {
-    private JTextField displayField;
+    private JTextPane displayPane;
     private double firstNumber = 0;
     private String currentOperation = "";
     private boolean isNewNumber = true;
+    private StringBuilder expression = new StringBuilder();
+    private String firstOperand = "";
+    private String secondOperand = "";
+    private boolean operatorPressed = false;
 
     public Question2() {
         // Set up the frame
@@ -17,11 +22,14 @@ public class Question2 extends JFrame {
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
 
-        // Create display field
-        displayField = new JTextField();
-        displayField.setHorizontalAlignment(JTextField.RIGHT);
-        displayField.setEditable(false);
-        displayField.setFont(new Font("Arial", Font.PLAIN, 20));
+        // Create display pane
+        displayPane = new JTextPane();
+        displayPane.setEditable(false);
+        displayPane.setFont(new Font("Arial", Font.PLAIN, 20));
+        displayPane.setBackground(Color.WHITE);
+        displayPane.setMargin(new Insets(10, 10, 10, 10));
+        displayPane.setPreferredSize(new Dimension(260, 70));
+        setRightAlignment("");
 
         // Create button panel
         JPanel buttonPanel = new JPanel();
@@ -54,11 +62,24 @@ public class Question2 extends JFrame {
 
         // Set up layout
         setLayout(new BorderLayout(10, 10));
-        add(displayField, BorderLayout.NORTH);
+        add(displayPane, BorderLayout.NORTH);
         add(buttonPanel, BorderLayout.CENTER);
 
         // Add padding
         ((JPanel)getContentPane()).setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+    }
+
+    private void setRightAlignment(String text) {
+        StyledDocument doc = displayPane.getStyledDocument();
+        SimpleAttributeSet right = new SimpleAttributeSet();
+        StyleConstants.setAlignment(right, StyleConstants.ALIGN_RIGHT);
+        doc.setParagraphAttributes(0, doc.getLength(), right, false);
+        try {
+            displayPane.setText("");
+            doc.insertString(0, text, right);
+        } catch (BadLocationException e) {
+            displayPane.setText(text);
+        }
     }
 
     private class NumberButtonListener implements ActionListener {
@@ -71,10 +92,21 @@ public class Question2 extends JFrame {
         @Override
         public void actionPerformed(ActionEvent e) {
             if (isNewNumber) {
-                displayField.setText(number);
+                setRightAlignment(number);
+                expression.setLength(0);
+                expression.append(number);
+                firstOperand = number;
+                secondOperand = "";
+                operatorPressed = false;
                 isNewNumber = false;
             } else {
-                displayField.setText(displayField.getText() + number);
+                setRightAlignment(displayPane.getText() + number);
+                expression.append(number);
+                if (!operatorPressed) {
+                    firstOperand += number;
+                } else {
+                    secondOperand += number;
+                }
             }
         }
     }
@@ -88,57 +120,77 @@ public class Question2 extends JFrame {
 
         @Override
         public void actionPerformed(ActionEvent e) {
-            firstNumber = Double.parseDouble(displayField.getText());
-            currentOperation = operation;
-            isNewNumber = true;
+            if (!operatorPressed && !firstOperand.isEmpty()) {
+                firstNumber = Double.parseDouble(firstOperand);
+                currentOperation = operation;
+                isNewNumber = false;
+                operatorPressed = true;
+                expression.append(" " + operation + " ");
+                setRightAlignment(expression.toString());
+            }
         }
     }
 
     private class EqualsButtonListener implements ActionListener {
         @Override
         public void actionPerformed(ActionEvent e) {
-            double secondNumber = Double.parseDouble(displayField.getText());
-            double result = 0;
-
-            switch (currentOperation) {
-                case "+":
-                    result = firstNumber + secondNumber;
-                    break;
-                case "-":
-                    result = firstNumber - secondNumber;
-                    break;
-                case "*":
-                    result = firstNumber * secondNumber;
-                    break;
-                case "/":
-                    if (secondNumber != 0) {
-                        result = firstNumber / secondNumber;
-                    } else {
-                        displayField.setText("Error: Division by zero");
-                        return;
-                    }
-                    break;
-            }
-
-            // Format the result to remove trailing zeros after decimal point
-            String formattedResult;
-            if (result == (long) result) {
-                formattedResult = String.format("%d", (long) result);
+            if (!firstOperand.isEmpty() && operatorPressed && !secondOperand.isEmpty()) {
+                double result = 0;
+                double secondNumber = 0;
+                try {
+                    secondNumber = Double.parseDouble(secondOperand);
+                } catch (Exception ex) {
+                    setRightAlignment(expression.toString() + "\n= Error");
+                    isNewNumber = true;
+                    return;
+                }
+                switch (currentOperation) {
+                    case "+":
+                        result = firstNumber + secondNumber;
+                        break;
+                    case "-":
+                        result = firstNumber - secondNumber;
+                        break;
+                    case "*":
+                        result = firstNumber * secondNumber;
+                        break;
+                    case "/":
+                        if (secondNumber != 0) {
+                            result = firstNumber / secondNumber;
+                        } else {
+                            setRightAlignment(expression.toString() + "\n= Error: Division by zero");
+                            isNewNumber = true;
+                            return;
+                        }
+                        break;
+                }
+                // Format the result to remove trailing zeros after decimal point
+                String formattedResult;
+                if (result == (long) result) {
+                    formattedResult = String.format("%d", (long) result);
+                } else {
+                    formattedResult = String.format("%s", result);
+                }
+                setRightAlignment(expression.toString() + "\n= " + formattedResult);
+                isNewNumber = true;
             } else {
-                formattedResult = String.format("%s", result);
+                // Don't show error for incomplete expressions
+                setRightAlignment(expression.toString());
             }
-            displayField.setText(formattedResult);
-            isNewNumber = true;
         }
     }
 
     private class ClearButtonListener implements ActionListener {
         @Override
         public void actionPerformed(ActionEvent e) {
-            displayField.setText("");
+            setRightAlignment("");
             firstNumber = 0;
             currentOperation = "";
             isNewNumber = true;
+            expression.setLength(0);
+            firstOperand = "";
+            secondOperand = "";
+            operatorPressed = false;
         }
     }
 
